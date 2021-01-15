@@ -42,10 +42,21 @@ ui<-fluidPage(
   selectInput("product","Choose Product Format",c("Quail Retail/Club/Food Service Brick",
                                                   "Quail Food Service Patties",
                                                   "Quail Retail/Club Patties")),
+  selectInput("ingredient","Ingredient Being Tested",c("Solanic",
+                                                       "TSPC",
+                                                       "Coconut Oil/Fat Emulsion",
+                                                       "Methylcellulose",
+                                                       "Advantagel-S",
+                                                       "Microgard740",
+                                                       "Yeast Extracts",
+                                                       "NaOH/HOH for MPG Replacement",
+                                                       "Heme (Dried/Powder Only)")),
   textInput("lots","Total number of Lots"),
   textInput("lotcodes","Lot Codes (Separated by a comma)"),
- checkboxGroupInput("cul","Culinary Tests",
-                     c("stainless steel","meatball","bake")),
+ checkboxGroupInput("cul1","Culinary Tests",
+                     choices="NA"),
+ checkboxGroupInput("cul2","Culinary Tests",
+                    choices = "NA"),
   checkboxGroupInput("age","aging",
                      c("D0","D1","D10","D15","D20")),
   selectInput("cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C")),
@@ -57,13 +68,13 @@ ui<-fluidPage(
   dateInput("datereport","Ideal Day for the Report"),
   textInput("comments","Comments or additional information/instructions"),
   actionButton("add","add"),
-  actionButton("delete","delete last entry")
+ tableOutput("beta")
   )
 
 server<-function(input,output,session){
 ################################## Objects ################################################ Objects
   
-  Requests<-eventReactive(c(input$update,input$add,input$delete), {
+  Requests<-eventReactive(c(input$update,input$add), {
     Data<-read_sheet(URL)
     Data$Samples_Available<-Data$Samples_Available%>%as.Date.character()
     Data%>%filter(Department=="IR",Completed=="No")%>%
@@ -72,27 +83,31 @@ server<-function(input,output,session){
   Logistics<-eventReactive(input$update,{
     read_sheet(URL,"Logistics")
   })
-  Tests<-eventReactive(c(input$update,input$add,input$delete,input$cul,input$lots,input$cookfrom),{
-    Time<-Logistics()%>%filter(Test%in%c(input$cul))%>%pull(.,Time)%>%sum()
+  
+  Tests<-eventReactive(c(input$update,input$add,input$cul1,input$cul2,input$lots,input$cookfrom),{
+    Time1<-Logistics()%>%filter(Test%in%input$cul1)%>%pull(.,Time)%>%sum()
+    Time2<-Logistics()%>%filter(Test%in%input$cul2)%>%pull(.,Time)%>%sum()
     Frozen<-if(input$cookfrom=="Frozen and 4C"&input$lots>2){2}
             else{1}
     Lots<-if (input$lots>8){3}
       else if(input$lots>4 & input$lots<=8){2}
       else if(input$lots<=4){1}
-    Total<-Lots*Frozen*Time+1
+    Total<-Lots*Frozen*Time1+Lots*Frozen*Time2+1
   })
-  Sampleneeded<-eventReactive(c(input$update,input$add,input$delete,input$cul,input$lots,input$cookfrom),{
-    Amount<-Logistics()%>%filter(Test%in%c(input$cul))%>%pull(.,`Sample Amount`)%>%sum()
+  
+  Sampleneeded<-eventReactive(c(input$update,input$add,input$cul1,input$cul2,input$lots,input$cookfrom),{
+    Amount1<-Logistics()%>%filter(Test%in%input$cul1)%>%pull(.,`Sample Amount`)%>%sum()
+    Amount2<-Logistics()%>%filter(Test%in%input$cul2)%>%pull(.,`Sample Amount`)%>%sum()
     Frozen<-if(input$cookfrom=="Frozen and 4C"&input$lots>2){2}
     else{1}
-    Total<-Frozen*Amount
+    Total<-Frozen*Amount1+Frozen*Amount2
   })
   
   Timepoints<-eventReactive(input$update,{
     data.frame(input$age)%>%nrow()
   })
   
-  Hours<-eventReactive(c(input$update,input$add,input$delete),{
+  Hours<-eventReactive(c(input$update,input$add),{
     Budget<-read_sheet(URL,sheet = "Budgets")%>%filter(Department==input$department)%>%
       mutate(.,week1=
                (pull(.,Hours_Alloted)-
@@ -134,11 +149,10 @@ server<-function(input,output,session){
                   pull(.,Culinary)%>%sum())
   })
 ################################## UI Updates ################################################# Ui Updates
-week(Sys.Date())
-  observeEvent(input$product,{
-    if(input$product=="Quail Retail/Club/Food Service Brick"){
-      updateCheckboxGroupInput(session,"cul","Culinary Tests",c("BOH",
-                                                                "Restaurant Grill",
+
+  observeEvent(c(input$product,input$department,input$ingredient),{
+    if(input$product=="Quail Retail/Club/Food Service Brick" & input$department%in%c("PVT","SL","Other")){
+      updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("Restaurant Grill",
                                                                 "Stainless Steel Pan",
                                                                 "Griddle",
                                                                 "Meatballs in Sauce",
@@ -146,35 +160,69 @@ week(Sys.Date())
                                                                 "Meatloaf",
                                                                 "Taco Crumble",
                                                                 "Backyard Grill"))
+      updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",c("Grill High Salt",
+                                                                        "Grill Onion",
+                                                                        "Boil",
+                                                                        "Deep Fry"))
       updateSelectInput(session,"cookfrom","Cook samples from...",c("4C"))
     }
-    else if(input$product=="Quail Food Service Patties"){
-      updateCheckboxGroupInput(session,"cul","Culinary Tests",c("BOH",
-                                                                "Restaurant Grill",
+    else if(input$product=="Quail Food Service Patties" & input$department%in%c("PVT","SL","Other")){
+      updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("Restaurant Grill",
                                                                 "Stainless Steel Pan",
                                                                 "Griddle",
                                                                 "Cast Iron",
                                                                 "Cast Iron Grill Pan"))
+      updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",c("NA"))
       updateSelectInput(session,"cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C"))
-      
     }
-    else if(input$product=="Quail Retail/Club Patties"){
-      updateCheckboxGroupInput(session,"cul","Culinary Tests",c("BOH",
-                                                                "Backyard Grill",
-                                                                "Stainless Steel Pan",
-                                                                "Cast Iron",
+    else if(input$product=="Quail Retail/Club Patties" & input$department%in%c("PVT","SL","Other")){
+      updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("Backyard Grill",
+                                                                "Stainless Steel Pan"))
+      updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",c("Cast Iron",
                                                                 "Cast Iron Grill Pan",
-                                                                "Bake",
-                                                                "Griddle"))
+                                                                "Bake"))
       updateSelectInput(session,"cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C"))
     }
+    else if(input$product%in%c("Quail Retail/Club/Food Service Brick","Quail Food Service Patties","Quail Retail/Club Patties") & input$department=="IR"){
+      if(input$ingredient%in%c("Solanic","TSPC","Methylcellulose","Advantagel-S")){
+        updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("BOH",
+                                                                        "Stainless Steel Pan",
+                                                                        "Meatballs in Sauce",
+                                                                        "Taco Crumble",
+                                                                        "Backyard Grill"))
+      updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",c("Grill High Salt",
+                                                                        "Boil"))
+      updateSelectInput(session,"cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C"))
+      }
+      else if(input$ingredient%in%c("Coconut Oil/Fat Emulsion","NaOH/HOH for MPG Replacement")){
+        updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("BOH",
+                                                                          "Backyard Grill",
+                                                                          "Stainless Steel Pan",
+                                                                          "Taco Crumble"))
+        updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",choices=NULL)
+        updateSelectInput(session,"cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C"))
+      }
+      else if(input$ingredient%in%c("Microgard740","Yeast Extracts","Heme (Dried/Powder Only)")){
+        updateCheckboxGroupInput(session,"cul1","Culinary Tests Tier 1",c("BOH",
+                                                                          "Backyard Grill",
+                                                                          "Stainless Steel Pan",
+                                                                          "Boil",
+                                                                          "Taco Crumble"))
+        updateCheckboxGroupInput(session,"cul2","Culinary Tests Tier 2",choices=NULL)
+        updateSelectInput(session,"cookfrom","Cook samples from...",c("Frozen","4C","Frozen and 4C"))
+      }}
+
   })
+
 
 ################################## INPUTS ################################################# Inputs 
   
   observeEvent(input$add,{
+    
     lots<-as.numeric(input$lots)
-    Cul<-pull(data.frame(input$cul)[1])%>%toString()
+    Cul1<-pull(data.frame(input$cul1)[1])%>%toString()
+    Cul2<-pull(data.frame(input$cul2)[1])%>%toString()
+    Cul<-paste(Cul1,Cul2,sep = ", ")
     Aging<-pull(data.frame(input$age)[1])%>%toString()
     sheet_append(URL,data.frame(input$name,
                                 input$projectname,
@@ -194,15 +242,12 @@ week(Sys.Date())
                                 Tests()
                                 ))
   })
-  observeEvent(input$delete,{
-    bottom<-as.character.numeric_version(nrow(Requests())+1)
-    range_delete(URL,sheet=NULL,bottom)
-  })
+
 ################################# OUTPUTS ################################################# Outputs
   
 #Table 1 
 
-  observeEvent(input$update|input$add|input$delete,ignoreInit = T,{
+  observeEvent(input$update|input$add,ignoreInit = T,{
     output$requests<-renderDataTable(
       Requests()[c(1:12)]%>%
         print()
@@ -220,17 +265,23 @@ week(Sys.Date())
   )
 #Budgets Table
     
-    observeEvent(input$update|input$budget|input$add|input$delete,ignoreInit = T,{
+    observeEvent(input$update|input$add,ignoreInit = T,{
       output$hours<-renderDataTable(
         Hours()%>%
           print()
       )
     })
-
+#beta Table
+    output$beta<-renderTable(
+      Logistics()%>%print()
+    )
 }
 
 
+
 shinyApp(ui,server)
+
+
 
 
 

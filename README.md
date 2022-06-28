@@ -15,7 +15,7 @@ The app itself interacts with several different tabs within the sheet.
 4. Logistics
 * This is where the time and the amount of sample needed for each test is stored. The table would ideally be in tidy format, but user complaince for team members was low in this format and caused too many errors/typos. The columns that matter are the Time (hours) column and every column directly calling out a specific SKU name ex: chameleon or eschen
 
-# These next two tables control the check boxes for each tier
+### These next two tables control the check boxes for each tier
 
 5. IR Tests
 * The Strategic Ingredients team (formorally known as IR) has their own sets of tests based on their prioritzations. STING team tests individual ingredients and have certain tests only available for those ingredients. 

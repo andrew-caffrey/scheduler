@@ -5,4 +5,6 @@ The Google Cloud Project is named **Request-Sheet** with the project number: **5
 
 The app is in a very stable state. The code only needs to be updated when a new project SKU is added to the culinary validation test suite. Further changes to the code could possibly get rid of this step; however, it only happens about 2-3 times a year so it would be a low yield task.
 
-The app itself interacts with several different tabs within the sheet
+The app itself interacts with several different tabs within the sheet. 
+1. Requests
+* Where the results feed into

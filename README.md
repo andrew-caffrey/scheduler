@@ -8,3 +8,15 @@ The app is in a very stable state. The code only needs to be updated when a new 
 The app itself interacts with several different tabs within the sheet. 
 1. Requests
 * Where the results feed into
+2. One offs
+* Not recorded by the app but is a way to keep track of one off requests from various 
+3. Budgets
+* Hourly budgets given to each team are stored here. Each request costs some amount of time. If the amount of time in open/imcompleted requests exceeds the budget, the ADD button within the app is disabled
+4. Logistics
+* This is where the time and the amount of sample needed for each test is stored. 
+5. IR Tests
+*
+6. General Tests
+*
+7. 
+
